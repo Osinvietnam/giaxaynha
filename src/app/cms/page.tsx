@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { NHU_CAU_LABELS } from '@/lib/constants'
+
 
 async function getDashboardData() {
   const supabase = await createClient()

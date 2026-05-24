@@ -251,6 +251,7 @@ export default async function CMSBanVeListPage({
                         <div className="w-12 h-9 rounded bg-zinc-100 overflow-hidden shrink-0
                                         flex items-center justify-center">
                           {bv.anh_bia
+                            // eslint-disable-next-line @next/next/no-img-element
                             ? <img src={bv.anh_bia} alt="" className="w-full h-full object-cover" />
                             : <span className="text-sm">{loai?.emoji ?? '🏠'}</span>
                           }
