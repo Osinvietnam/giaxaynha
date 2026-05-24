@@ -2,11 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Guard: nếu thiếu env vars thì cho qua — tránh redirect loop khi deploy
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() { return request.cookies.getAll() },
@@ -23,12 +31,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Bọc trong try-catch để tránh crash khi Supabase không kết nối được
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data.user
+  } catch {
+    // Không kết nối được Supabase → coi như chưa đăng nhập
+    // /cms/login vẫn accessible, các trang khác trong /cms bị chặn
+  }
 
   // Bảo vệ toàn bộ /cms — redirect về /cms/login nếu chưa đăng nhập
-  if (request.nextUrl.pathname.startsWith('/cms') &&
-      !request.nextUrl.pathname.startsWith('/cms/login') &&
-      !user) {
+  if (
+    request.nextUrl.pathname.startsWith('/cms') &&
+    !request.nextUrl.pathname.startsWith('/cms/login') &&
+    !user
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = '/cms/login'
     return NextResponse.redirect(url)
