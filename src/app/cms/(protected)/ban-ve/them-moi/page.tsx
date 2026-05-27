@@ -111,6 +111,12 @@ export default function ThemMoiBanVePage() {
   const [coverImage,  setCoverImage]  = useState<File | null>(null)
   const [coverPreview,setCoverPreview]= useState<string | null>(null)
 
+  // ── OneDrive / URL trực tiếp (thay thế upload) ──
+  const [pdfMode,   setPdfMode]   = useState<'upload' | 'url'>('upload')
+  const [cadMode,   setCadMode]   = useState<'upload' | 'url'>('upload')
+  const [pdfUrlInput,  setPdfUrlInput]  = useState('')
+  const [cadUrlInput,  setCadUrlInput]  = useState('')
+
   // ── Submit state ──
   const [submitting,  setSubmitting]  = useState(false)
   const [uploadStep,  setUploadStep]  = useState('')
@@ -159,8 +165,9 @@ export default function ThemMoiBanVePage() {
       setError('Vui lòng nhập tiêu đề bản vẽ.')
       return
     }
-    if (trangThai === 'cho_duyet' && !pdfFile) {
-      setError('Vui lòng tải lên file PDF trước khi gửi duyệt.')
+    const hasPdf = pdfMode === 'upload' ? !!pdfFile : !!pdfUrlInput.trim()
+    if (trangThai === 'cho_duyet' && !hasPdf) {
+      setError('Vui lòng tải lên file PDF hoặc nhập link OneDrive trước khi gửi duyệt.')
       return
     }
 
@@ -177,16 +184,20 @@ export default function ThemMoiBanVePage() {
       let cadUrl:   string | null = null
       let coverUrl: string | null = null
 
-      // Upload PDF
-      if (pdfFile) {
+      // PDF — upload file hoặc dùng URL OneDrive
+      if (pdfMode === 'url' && pdfUrlInput.trim()) {
+        pdfUrl = pdfUrlInput.trim()
+      } else if (pdfMode === 'upload' && pdfFile) {
         setUploadStep('Đang tải file PDF...')
         pdfUrl = await uploadToStorage(
           supabase, 'ban-ve-files', `${maGXN}/ban-ve.pdf`, pdfFile,
         )
       }
 
-      // Upload CAD
-      if (cadFile) {
+      // CAD — upload file hoặc dùng URL OneDrive
+      if (cadMode === 'url' && cadUrlInput.trim()) {
+        cadUrl = cadUrlInput.trim()
+      } else if (cadMode === 'upload' && cadFile) {
         setUploadStep('Đang tải file CAD...')
         const ext = cadFile.name.split('.').pop() ?? 'dwg'
         cadUrl = await uploadToStorage(
@@ -301,26 +312,72 @@ export default function ThemMoiBanVePage() {
             📁 Files
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* PDF */}
             <div>
-              <Label required>File PDF (hồ sơ thiết kế)</Label>
-              <FileDropzone
-                accept={{ 'application/pdf': ['.pdf'] }}
-                label="PDF"
-                hint="Kéo thả file .pdf vào đây hoặc nhấn để chọn"
-                file={pdfFile}
-                onDrop={setPdfFile}
-                required
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <Label required>File PDF (hồ sơ thiết kế)</Label>
+                <div className="flex gap-1 text-[10px]">
+                  {(['upload','url'] as const).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setPdfMode(m)}
+                      className={`px-2 py-0.5 rounded border transition-colors
+                        ${pdfMode === m
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-zinc-500 border-zinc-300 hover:border-zinc-400'}`}>
+                      {m === 'upload' ? 'Upload' : 'OneDrive'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {pdfMode === 'upload' ? (
+                <FileDropzone
+                  accept={{ 'application/pdf': ['.pdf'] }}
+                  label="PDF" hint="Kéo thả file .pdf hoặc nhấn để chọn"
+                  file={pdfFile} onDrop={setPdfFile} required
+                />
+              ) : (
+                <input
+                  type="url"
+                  value={pdfUrlInput}
+                  onChange={e => setPdfUrlInput(e.target.value)}
+                  placeholder="https://[company]-my.sharepoint.com/..."
+                  className={inputCls}
+                />
+              )}
             </div>
+
+            {/* CAD */}
             <div>
-              <Label>File CAD (tùy chọn, gói Cơ bản+)</Label>
-              <FileDropzone
-                accept={{ 'application/octet-stream': ['.dwg', '.dxf'] }}
-                label="CAD"
-                hint=".dwg hoặc .dxf · Chỉ dành cho gói Cơ bản trở lên"
-                file={cadFile}
-                onDrop={setCadFile}
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <Label>File CAD (tùy chọn)</Label>
+                <div className="flex gap-1 text-[10px]">
+                  {(['upload','url'] as const).map(m => (
+                    <button key={m} type="button"
+                      onClick={() => setCadMode(m)}
+                      className={`px-2 py-0.5 rounded border transition-colors
+                        ${cadMode === m
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-zinc-500 border-zinc-300 hover:border-zinc-400'}`}>
+                      {m === 'upload' ? 'Upload' : 'OneDrive'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {cadMode === 'upload' ? (
+                <FileDropzone
+                  accept={{ 'application/octet-stream': ['.dwg', '.dxf'] }}
+                  label="CAD" hint=".dwg hoặc .dxf · Gói Cơ bản trở lên"
+                  file={cadFile} onDrop={setCadFile}
+                />
+              ) : (
+                <input
+                  type="url"
+                  value={cadUrlInput}
+                  onChange={e => setCadUrlInput(e.target.value)}
+                  placeholder="https://[company]-my.sharepoint.com/..."
+                  className={inputCls}
+                />
+              )}
             </div>
           </div>
         </section>

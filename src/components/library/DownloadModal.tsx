@@ -22,28 +22,31 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
   const [nhuCau, setNhuCau] = useState<NhuCauLead | ''>('')
   const [result, setResult] = useState<SubmitLeadResponse | null>(null)
   const [errMsg, setErrMsg] = useState('')
+  const [isRateLimit, setIsRateLimit] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!sdt.trim()) return
 
     setStep('loading')
+    setIsRateLimit(false)
 
     try {
       const res  = await fetch('/api/leads', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ban_ve_id:      banVeId,
-          so_dien_thoai:  sdt.trim(),
-          ho_ten:         hoTen.trim() || undefined,
-          tinh_id:        tinhId || undefined,
-          nhu_cau:        nhuCau || undefined,
+          ban_ve_id:     banVeId,
+          so_dien_thoai: sdt.trim(),
+          ho_ten:        hoTen.trim() || undefined,
+          tinh_id:       tinhId || undefined,
+          nhu_cau:       nhuCau || undefined,
         }),
       })
       const data: SubmitLeadResponse = await res.json()
 
       if (!res.ok || !data.success) {
+        setIsRateLimit(res.status === 429)
         setErrMsg(data.error ?? 'Có lỗi xảy ra. Vui lòng thử lại.')
         setStep('error')
       } else {
@@ -56,7 +59,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
     }
   }
 
-  // Format expires_at → hiển thị đẹp
   const expiresLabel = result?.expires_at
     ? new Date(result.expires_at).toLocaleString('vi-VN', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -65,17 +67,17 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
     : ''
 
   return (
-    /* Backdrop */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-zinc-100">
           <div>
             <h2 className="text-base font-semibold text-zinc-800">
-              {step === 'success' ? 'Tải bản vẽ' : 'Nhận bản vẽ miễn phí'}
+              {step === 'success' ? 'Link tải đã sẵn sàng' : 'Nhận bản vẽ miễn phí'}
             </h2>
             <p className="text-xs text-zinc-400 font-mono mt-0.5">{maGXN}</p>
           </div>
@@ -89,7 +91,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-5">
 
           {/* ── Step: Form ── */}
@@ -105,7 +106,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* SĐT — bắt buộc */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-600 uppercase
                                    tracking-wider mb-1.5">
@@ -122,7 +122,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
                   />
                 </div>
 
-                {/* Họ tên — không bắt buộc */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-600 uppercase
                                    tracking-wider mb-1.5">
@@ -138,7 +137,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
                   />
                 </div>
 
-                {/* Tỉnh/Thành */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-600 uppercase
                                    tracking-wider mb-1.5">
@@ -157,7 +155,6 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
                   </select>
                 </div>
 
-                {/* Nhu cầu */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-600 uppercase
                                    tracking-wider mb-2">
@@ -212,30 +209,30 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
           )}
 
           {/* ── Step: Success ── */}
-          {step === 'success' && result?.drive_url && (
+          {step === 'success' && result?.download_url && (
             <div>
               <div className="text-center mb-5">
                 <div className="text-4xl mb-3">✅</div>
                 <h3 className="font-semibold text-zinc-800 mb-1">Link tải đã sẵn sàng!</h3>
                 <p className="text-xs text-zinc-500">
-                  Link có hiệu lực đến: {expiresLabel}
+                  Có hiệu lực đến: <strong>{expiresLabel}</strong>
                 </p>
               </div>
 
               <a
-                href={result.drive_url}
+                href={result.download_url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full bg-green-600 hover:bg-green-500 text-white text-center
                            font-semibold text-sm py-3 rounded-lg transition-colors mb-3"
               >
-                📥 Tải bản vẽ
+                📥 Tải bản vẽ ngay
               </a>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <p className="text-xs text-amber-700">
-                  <strong>Lưu ý:</strong> Link tải sẽ hết hiệu lực sau 72 giờ.
-                  Vui lòng tải về ngay và lưu trữ cẩn thận.
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  <strong>Lưu ý:</strong> Link hết hạn sau 24 giờ và tối đa 3 lượt tải.
+                  Vui lòng lưu file về máy ngay sau khi tải.
                 </p>
               </div>
 
@@ -253,15 +250,27 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
           {/* ── Step: Error ── */}
           {step === 'error' && (
             <div className="text-center py-8">
-              <div className="text-4xl mb-3">❌</div>
-              <p className="text-sm font-medium text-zinc-800 mb-1">Có lỗi xảy ra</p>
-              <p className="text-xs text-zinc-500 mb-5">{errMsg}</p>
-              <button
-                onClick={() => setStep('form')}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                ← Thử lại
-              </button>
+              {isRateLimit ? (
+                <>
+                  <div className="text-4xl mb-3">⏳</div>
+                  <p className="text-sm font-medium text-zinc-800 mb-1">
+                    Đã đạt giới hạn tải hôm nay
+                  </p>
+                  <p className="text-xs text-zinc-500 mb-5 leading-relaxed">{errMsg}</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-4xl mb-3">❌</div>
+                  <p className="text-sm font-medium text-zinc-800 mb-1">Có lỗi xảy ra</p>
+                  <p className="text-xs text-zinc-500 mb-5">{errMsg}</p>
+                  <button
+                    onClick={() => setStep('form')}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    ← Thử lại
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

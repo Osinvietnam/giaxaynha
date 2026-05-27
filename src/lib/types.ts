@@ -91,9 +91,23 @@ export interface SubmitLeadRequest {
 
 export interface SubmitLeadResponse {
   success: boolean
-  drive_url?: string
-  expires_at?: string
+  download_url?: string   // /api/download/[token] — không lộ URL thật
+  expires_at?: string     // ISO string, hết hạn sau 24h
   error?: string
+}
+
+// ── Download token (internal) ─────────────────────────────────
+
+export interface DownloadToken {
+  id: string
+  token: string
+  ban_ve_id: string
+  lead_id: string
+  phone_hash: string
+  expires_at: string
+  use_count: number
+  max_uses: number
+  created_at: string
 }
 
 // ── CMS filter params ─────────────────────────────────────────
