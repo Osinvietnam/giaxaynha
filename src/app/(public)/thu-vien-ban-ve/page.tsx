@@ -31,7 +31,7 @@ async function getLibraryData() {
   const { data: featured } = await supabase
     .from('ban_ve')
     .select(`
-      id, ma_gxn, tieu_de, loai_ct, phong_cach_1, goi_tai,
+      id, ma_gxn, slug, tieu_de, loai_ct, phong_cach_1, goi_tai,
       anh_bia, luot_tai,
       danh_muc:danh_muc_ban_ve(slug)
     `)
@@ -51,7 +51,7 @@ async function getSearchResults(q: string, phongCach: string) {
   let query = supabase
     .from('ban_ve')
     .select(`
-      id, ma_gxn, tieu_de, loai_ct, phong_cach_1, goi_tai,
+      id, ma_gxn, slug, tieu_de, loai_ct, phong_cach_1, goi_tai,
       anh_bia, luot_tai,
       danh_muc:danh_muc_ban_ve(slug)
     `, { count: 'exact' })
@@ -110,6 +110,7 @@ function SearchResultsView({
               <DrawingCard
                 key={bv.id}
                 maGXN={bv.ma_gxn}
+                slug={bv.slug}
                 tieuDe={bv.tieu_de}
                 loaiCt={bv.loai_ct}
                 phongCach1={bv.phong_cach_1}
@@ -249,6 +250,7 @@ export default async function ThuVienBanVePage({
                 <DrawingCard
                   key={bv.id}
                   maGXN={bv.ma_gxn}
+                  slug={bv.slug}
                   tieuDe={bv.tieu_de}
                   loaiCt={bv.loai_ct}
                   phongCach1={bv.phong_cach_1}
@@ -257,6 +259,7 @@ export default async function ThuVienBanVePage({
                   luotTai={bv.luot_tai}
                   danhMucSlug={(bv.danh_muc as { slug: string } | null)?.slug ?? 'ban-ve'}
                 />
+
               ))}
             </div>
           </section>

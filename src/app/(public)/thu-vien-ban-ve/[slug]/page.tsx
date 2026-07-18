@@ -42,7 +42,7 @@ async function fetchDrawings(params: PageProps['searchParams'] & { loaiCt: numbe
   let query = supabase
     .from('ban_ve')
     .select(`
-      id, ma_gxn, tieu_de, loai_ct, phong_cach_1, goi_tai,
+      id, ma_gxn, slug, tieu_de, loai_ct, phong_cach_1, goi_tai,
       anh_bia, luot_tai,
       danh_muc:danh_muc_ban_ve(slug)
     `, { count: 'exact' })
@@ -252,6 +252,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
                     <DrawingCard
                       key={bv.id}
                       maGXN={bv.ma_gxn}
+                      slug={bv.slug}
                       tieuDe={bv.tieu_de}
                       loaiCt={bv.loai_ct}
                       phongCach1={bv.phong_cach_1}

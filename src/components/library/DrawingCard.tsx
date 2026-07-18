@@ -1,8 +1,10 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { LOAI_CT, PHONG_CACH } from '@/lib/constants'
 
 export interface DrawingCardProps {
   maGXN: string
+  slug?: string
   tieuDe: string
   loaiCt: number
   phongCach1: number
@@ -14,6 +16,7 @@ export interface DrawingCardProps {
 
 export function DrawingCard({
   maGXN,
+  slug,
   tieuDe,
   loaiCt,
   phongCach1,
@@ -24,18 +27,20 @@ export function DrawingCard({
 }: DrawingCardProps) {
   const loai   = LOAI_CT[loaiCt]
   const phong  = PHONG_CACH[phongCach1]
-  const href   = `/thu-vien-ban-ve/${danhMucSlug}/${maGXN}`
+  // URL ưu tiên slug (SEO); fallback ma_gxn nếu thiếu slug
+  const href   = `/thu-vien-ban-ve/${danhMucSlug}/${slug || maGXN}`
 
   return (
     <Link href={href} className="drawing-card group block">
       {/* Thumbnail */}
       <div className="drawing-card-img">
         {anhBia ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={anhBia}
             alt={tieuDe}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full bg-zinc-100 flex flex-col items-center justify-center gap-1">

@@ -1,63 +1,73 @@
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { LOAI_CT, PHONG_CACH, TINH } from '@/lib/constants'
 import { DownloadGate } from '@/components/library/DownloadGate'
 import { DrawingCard } from '@/components/library/DrawingCard'
 import { Gallery } from '@/components/library/Gallery'
-import { DOWNLOAD } from '@/lib/site'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { DOWNLOAD, BASE_URL, SITE } from '@/lib/site'
 
 interface PageProps {
-  params: { slug: string; 'ma-gxn': string }
+  params: { slug: string; 'ban-ve': string }
+}
+
+const DETAIL_SELECT = `
+  id, ma_gxn, tieu_de, slug,
+  loai_ct, phong_cach_1, phong_cach_2,
+  chieu_dai, chieu_rong, so_tang, dien_tich_san, so_phong_ngu,
+  tinh_id, mo_ta, the_tag,
+  anh_bia, anh_phu,
+  goi_tai, seo_title, seo_description,
+  luot_xem, luot_tai,
+  trang_thai,
+  danh_muc:danh_muc_ban_ve(ten, slug)
+`
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function danhMucOf(bv: any): { ten: string; slug: string } | null {
+  const raw = bv?.danh_muc
+  return Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null)
+}
+
+// Tra cứu theo slug (ưu tiên) rồi ma_gxn (để 301 redirect URL cũ)
+async function getDrawingByIdentifier(identifier: string) {
+  const supabase = await createClient()
+
+  const bySlug = await supabase.from('ban_ve').select(DETAIL_SELECT)
+    .eq('slug', identifier).eq('trang_thai', 'da_xuat').maybeSingle()
+  if (bySlug.data) return { data: bySlug.data, matchedBy: 'slug' as const }
+
+  const byGxn = await supabase.from('ban_ve').select(DETAIL_SELECT)
+    .eq('ma_gxn', identifier).eq('trang_thai', 'da_xuat').maybeSingle()
+  if (byGxn.data) return { data: byGxn.data, matchedBy: 'ma_gxn' as const }
+
+  return { data: null, matchedBy: null }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('ban_ve')
-    .select('tieu_de, seo_title, seo_description, anh_bia')
-    .eq('ma_gxn', params['ma-gxn'])
-    .eq('trang_thai', 'da_xuat')
-    .single()
-
+  const { data } = await getDrawingByIdentifier(params['ban-ve'])
   if (!data) return { title: 'Bản vẽ không tìm thấy' }
+
+  const dm = danhMucOf(data)
+  const canonical = `${BASE_URL}/thu-vien-ban-ve/${dm?.slug ?? params.slug}/${data.slug}`
+  const desc = data.seo_description
+    ?? (data.mo_ta
+        ? String(data.mo_ta).replace(/\s+/g, ' ').slice(0, 158)
+        : `Tải bản vẽ ${data.tieu_de} — hồ sơ PDF, khái toán chi phí tại GiaXayNha.vn`)
 
   return {
     title: data.seo_title ?? `${data.tieu_de} — GiaXayNha.vn`,
-    description: data.seo_description ?? undefined,
-    openGraph: data.anh_bia
-      ? { images: [{ url: data.anh_bia }] }
-      : undefined,
+    description: desc,
+    alternates: { canonical },
+    openGraph: {
+      title: data.seo_title ?? data.tieu_de,
+      description: desc,
+      url: canonical,
+      images: data.anh_bia ? [{ url: data.anh_bia }] : undefined,
+    },
   }
-}
-
-async function getDrawing(maGXN: string) {
-  const supabase = await createClient()
-
-  const { data } = await supabase
-    .from('ban_ve')
-    .select(`
-      id, ma_gxn, tieu_de, slug,
-      loai_ct, phong_cach_1, phong_cach_2,
-      chieu_dai, chieu_rong, so_tang, dien_tich_san, so_phong_ngu,
-      tinh_id, mo_ta, the_tag,
-      anh_bia, anh_phu,
-      goi_tai,
-      luot_xem, luot_tai,
-      trang_thai,
-      danh_muc:danh_muc_ban_ve(ten, slug)
-    `)
-    .eq('ma_gxn', maGXN)
-    .eq('trang_thai', 'da_xuat')
-    .single()
-
-  if (data) {
-    // Increment lượt xem (non-blocking)
-    supabase.rpc('increment_luot_xem', { ban_ve_id: data.id }).then(() => {})
-  }
-
-  return data
 }
 
 async function getRelated(loaiCt: number, excludeId: string) {
@@ -65,7 +75,7 @@ async function getRelated(loaiCt: number, excludeId: string) {
   const { data } = await supabase
     .from('ban_ve')
     .select(`
-      id, ma_gxn, tieu_de, loai_ct, phong_cach_1, goi_tai,
+      id, ma_gxn, tieu_de, slug, loai_ct, phong_cach_1, goi_tai,
       anh_bia, luot_tai,
       danh_muc:danh_muc_ban_ve(slug)
     `)
@@ -79,28 +89,64 @@ async function getRelated(loaiCt: number, excludeId: string) {
 }
 
 export default async function DrawingDetailPage({ params }: PageProps) {
-  const maGXN  = params['ma-gxn']
-  const bv     = await getDrawing(maGXN)
+  const { data: bv, matchedBy } = await getDrawingByIdentifier(params['ban-ve'])
 
   if (!bv) notFound()
+
+  const danh_muc = danhMucOf(bv)
+
+  // 301 redirect URL cũ (ma_gxn) → URL slug chuẩn (task 2.7)
+  if (matchedBy === 'ma_gxn') {
+    permanentRedirect(`/thu-vien-ban-ve/${danh_muc?.slug ?? params.slug}/${bv.slug}`)
+  }
+
+  // Đếm lượt xem (non-blocking)
+  const supabaseView = await createClient()
+  supabaseView.rpc('increment_luot_xem', { ban_ve_id: bv.id }).then(() => {})
 
   const loai   = LOAI_CT[bv.loai_ct]
   const phong1 = PHONG_CACH[bv.phong_cach_1]
   const phong2 = bv.phong_cach_2 ? PHONG_CACH[bv.phong_cach_2] : null
   const tinh   = bv.tinh_id ? TINH[bv.tinh_id] : null
-  // Supabase join may return single object or array; normalise to object | null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawDanhMuc = bv.danh_muc as any
-  const danh_muc: { ten: string; slug: string } | null = Array.isArray(rawDanhMuc)
-    ? (rawDanhMuc[0] ?? null)
-    : rawDanhMuc ?? null
 
   const related = await getRelated(bv.loai_ct, bv.id)
 
   const allImages = [bv.anh_bia, ...(bv.anh_phu ?? [])].filter(Boolean) as string[]
+  const canonicalPath = `/thu-vien-ban-ve/${danh_muc?.slug ?? params.slug}/${bv.slug}`
+
+  // JSON-LD: Product + BreadcrumbList (task 2.5)
+  const productLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: bv.tieu_de,
+    image: allImages.length ? allImages : undefined,
+    description: bv.mo_ta ?? bv.tieu_de,
+    sku: bv.ma_gxn,
+    category: loai?.ten,
+    brand: { '@type': 'Brand', name: SITE.name },
+    offers: {
+      '@type': 'Offer',
+      price: bv.goi_tai === 'free' ? '0' : undefined,
+      priceCurrency: 'VND',
+      availability: 'https://schema.org/InStock',
+      url: `${BASE_URL}${canonicalPath}`,
+    },
+  }
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Thư viện bản vẽ', item: `${BASE_URL}/thu-vien-ban-ve` },
+      ...(danh_muc ? [{ '@type': 'ListItem', position: 2, name: danh_muc.ten, item: `${BASE_URL}/thu-vien-ban-ve/${danh_muc.slug}` }] : []),
+      { '@type': 'ListItem', position: danh_muc ? 3 : 2, name: bv.tieu_de, item: `${BASE_URL}${canonicalPath}` },
+    ],
+  }
 
   return (
     <div className="min-h-screen bg-white">
+      <JsonLd data={productLd} />
+      <JsonLd data={breadcrumbLd} />
+
       {/* Breadcrumb */}
       <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-3">
         <nav className="max-w-6xl mx-auto text-xs text-zinc-500 flex items-center gap-1.5 flex-wrap">
@@ -259,6 +305,7 @@ export default async function DrawingDetailPage({ params }: PageProps) {
                 <DrawingCard
                   key={r.id}
                   maGXN={r.ma_gxn}
+                  slug={r.slug}
                   tieuDe={r.tieu_de}
                   loaiCt={r.loai_ct}
                   phongCach1={r.phong_cach_1}

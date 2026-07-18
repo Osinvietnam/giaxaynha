@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 
 interface GalleryProps {
   images: string[]
@@ -37,12 +38,14 @@ export function Gallery({ images, alt, fallbackEmoji = '🏠' }: GalleryProps) {
       className="outline-none"
     >
       {/* Ảnh chính */}
-      <div className="aspect-[4/3] bg-zinc-100 rounded-xl overflow-hidden mb-3">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      <div className="relative aspect-[4/3] bg-zinc-100 rounded-xl overflow-hidden mb-3">
+        <Image
           src={images[active]}
           alt={`${alt} — ảnh ${active + 1}`}
-          className="w-full h-full object-cover"
+          fill
+          sizes="(max-width: 1024px) 100vw, 66vw"
+          className="object-cover"
+          priority
         />
       </div>
 
@@ -60,8 +63,8 @@ export function Gallery({ images, alt, fallbackEmoji = '🏠' }: GalleryProps) {
               className={`shrink-0 rounded-lg overflow-hidden border-2 transition-all
                 ${i === active ? 'border-blue-500' : 'border-transparent hover:border-zinc-300'}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt={`${alt} - ${i + 1}`} className="w-20 h-14 object-cover" />
+              <Image src={img} alt={`${alt} - ${i + 1}`} width={80} height={56}
+                     className="w-20 h-14 object-cover" />
             </button>
           ))}
         </div>

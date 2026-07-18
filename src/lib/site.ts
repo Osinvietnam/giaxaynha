@@ -6,7 +6,13 @@
 
 const hotline = process.env.NEXT_PUBLIC_HOTLINE ?? '0900 000 000' // TODO: thay số thật
 
+// Domain chính thức — dùng cho sitemap, canonical, metadataBase, JSON-LD.
+// ⚠️ Set NEXT_PUBLIC_APP_URL trên Vercel = domain thật khi go-live.
+export const BASE_URL = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://giaxaynha.vercel.app')
+  .replace(/\/+$/, '')
+
 export const SITE = {
+  name: 'GiaXayNha.vn',
   hotline,
   hotlineTel: hotline.replace(/[^0-9+]/g, ''),
   zaloUrl: process.env.NEXT_PUBLIC_ZALO_URL ?? 'https://zalo.me/', // TODO: thay link Zalo OA
