@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { cache } from 'react'
+import { createPublicClient } from '@/lib/supabase/public'
 import { notFound, permanentRedirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -6,11 +7,35 @@ import { LOAI_CT, PHONG_CACH, TINH } from '@/lib/constants'
 import { DownloadGate } from '@/components/library/DownloadGate'
 import { DrawingCard } from '@/components/library/DrawingCard'
 import { Gallery } from '@/components/library/Gallery'
+import { ViewBeacon } from '@/components/library/ViewBeacon'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { DOWNLOAD, BASE_URL, SITE } from '@/lib/site'
 
 interface PageProps {
   params: { slug: string; 'ban-ve': string }
+}
+
+// ISR: phục vụ từ CDN, làm mới mỗi giờ (task 3.1)
+export const revalidate = 3600
+
+// Prebuild top bản vẽ tải nhiều nhất (task 3.2); còn lại sinh on-demand
+export async function generateStaticParams() {
+  try {
+    const supabase = createPublicClient()
+    const { data } = await supabase
+      .from('ban_ve')
+      .select('slug, danh_muc:danh_muc_ban_ve(slug)')
+      .eq('trang_thai', 'da_xuat')
+      .order('luot_tai', { ascending: false })
+      .limit(50)
+    return (data ?? []).map((bv) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const dm = Array.isArray(bv.danh_muc) ? bv.danh_muc[0] : (bv.danh_muc as any)
+      return { slug: dm?.slug ?? 'ban-ve', 'ban-ve': bv.slug as string }
+    })
+  } catch {
+    return []
+  }
 }
 
 const DETAIL_SELECT = `
@@ -31,9 +56,10 @@ function danhMucOf(bv: any): { ten: string; slug: string } | null {
   return Array.isArray(raw) ? (raw[0] ?? null) : (raw ?? null)
 }
 
-// Tra cứu theo slug (ưu tiên) rồi ma_gxn (để 301 redirect URL cũ)
-async function getDrawingByIdentifier(identifier: string) {
-  const supabase = await createClient()
+// Tra cứu theo slug (ưu tiên) rồi ma_gxn. cache() → dedupe giữa
+// generateMetadata và page trong cùng 1 request (task 3.5)
+const getDrawingByIdentifier = cache(async (identifier: string) => {
+  const supabase = createPublicClient()
 
   const bySlug = await supabase.from('ban_ve').select(DETAIL_SELECT)
     .eq('slug', identifier).eq('trang_thai', 'da_xuat').maybeSingle()
@@ -44,7 +70,7 @@ async function getDrawingByIdentifier(identifier: string) {
   if (byGxn.data) return { data: byGxn.data, matchedBy: 'ma_gxn' as const }
 
   return { data: null, matchedBy: null }
-}
+})
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { data } = await getDrawingByIdentifier(params['ban-ve'])
@@ -71,7 +97,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 async function getRelated(loaiCt: number, excludeId: string) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const { data } = await supabase
     .from('ban_ve')
     .select(`
@@ -99,10 +125,6 @@ export default async function DrawingDetailPage({ params }: PageProps) {
   if (matchedBy === 'ma_gxn') {
     permanentRedirect(`/thu-vien-ban-ve/${danh_muc?.slug ?? params.slug}/${bv.slug}`)
   }
-
-  // Đếm lượt xem (non-blocking)
-  const supabaseView = await createClient()
-  supabaseView.rpc('increment_luot_xem', { ban_ve_id: bv.id }).then(() => {})
 
   const loai   = LOAI_CT[bv.loai_ct]
   const phong1 = PHONG_CACH[bv.phong_cach_1]
@@ -144,6 +166,7 @@ export default async function DrawingDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      <ViewBeacon banVeId={bv.id} />
       <JsonLd data={productLd} />
       <JsonLd data={breadcrumbLd} />
 

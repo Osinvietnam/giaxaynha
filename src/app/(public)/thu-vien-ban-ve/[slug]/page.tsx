@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 async function fetchDrawings(params: PageProps['searchParams'] & { loaiCt: number }) {
-  const supabase   = await createClient()
+  const supabase   = createPublicClient()
   const page       = Math.max(1, parseInt(params.page ?? '1', 10))
   const from       = (page - 1) * PAGE_SIZE
   const to         = from + PAGE_SIZE - 1

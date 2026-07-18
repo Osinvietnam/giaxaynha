@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 import { BASE_URL } from '@/lib/site'
 import { LOAI_CT } from '@/lib/constants'
 
@@ -20,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let drawingPages: MetadataRoute.Sitemap = []
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const { data } = await supabase
       .from('ban_ve')
       .select('slug, updated_at, danh_muc:danh_muc_ban_ve(slug)')

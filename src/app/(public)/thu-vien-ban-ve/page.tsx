@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { LOAI_CT, PHONG_CACH } from '@/lib/constants'
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 }
 
 async function getLibraryData() {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   // Đếm bản vẽ theo loại CT (sử dụng view public)
   const { data: countData } = await supabase
@@ -46,7 +46,7 @@ async function getLibraryData() {
 
 // ── Tìm kiếm / lọc theo phong cách (task 1.1, 1.3) ────────────
 async function getSearchResults(q: string, phongCach: string) {
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   let query = supabase
     .from('ban_ve')

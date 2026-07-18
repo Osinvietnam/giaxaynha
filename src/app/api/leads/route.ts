@@ -38,6 +38,32 @@ function cleanPhone(phone: string): string {
   return p
 }
 
+// Rate-limit theo IP qua Upstash REST (task 3.7). Chưa cấu hình env → bỏ qua.
+const IP_LIMIT_PER_HOUR = parseInt(process.env.LEADS_IP_LIMIT_PER_HOUR ?? '20', 10)
+
+async function ipRateLimitOk(ip: string): Promise<boolean> {
+  const url   = process.env.UPSTASH_REDIS_REST_URL
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN
+  if (!url || !token) return true // chưa bật rate-limit IP
+
+  const hour = new Date().toISOString().slice(0, 13) // theo giờ UTC
+  const key  = `rl:leads:${ip}:${hour}`
+  try {
+    const res  = await fetch(`${url}/incr/${key}`, {
+      headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+    })
+    const json = await res.json() as { result: number }
+    if (json.result === 1) {
+      await fetch(`${url}/expire/${key}/3600`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+      })
+    }
+    return json.result <= IP_LIMIT_PER_HOUR
+  } catch {
+    return true // lỗi Upstash → không chặn người dùng
+  }
+}
+
 // ── Zod Schema ────────────────────────────────────────────────
 
 const leadSchema = z.object({
@@ -59,6 +85,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitLeadRes
       return NextResponse.json(
         { success: false, error: 'Hệ thống chưa cấu hình đầy đủ' },
         { status: 500 }
+      )
+    }
+
+    // Rate-limit theo IP (chống bơm SĐT giả) — trước khi chạm DB
+    const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'unknown'
+    if (!(await ipRateLimitOk(ip))) {
+      return NextResponse.json(
+        { success: false, error: 'Quá nhiều yêu cầu. Vui lòng thử lại sau ít phút.' },
+        { status: 429 }
       )
     }
 

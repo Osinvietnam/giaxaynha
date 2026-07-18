@@ -95,9 +95,9 @@ export async function GET(
     fetchUrl = toDirectDownload(banVe.file_pdf_url)
   }
 
-  // 4. Đếm lượt tải thật (chỉ lần đầu dùng token) — non-blocking
+  // 4. Đếm lượt tải thật (chỉ lần đầu dùng token) — await để chắc chắn chạy
   if (wasFirst) {
-    supabase.rpc('increment_luot_tai', { ban_ve_id: banVeId }).then(() => {})
+    await supabase.rpc('increment_luot_tai', { ban_ve_id: banVeId })
   }
 
   // 5. STREAM bytes — client không bao giờ thấy URL thật (kể cả trong Location)

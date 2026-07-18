@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { BASE_URL, SITE } from '@/lib/site'
 import { JsonLd } from '@/components/seo/JsonLd'
 
@@ -44,6 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           },
         }} />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
