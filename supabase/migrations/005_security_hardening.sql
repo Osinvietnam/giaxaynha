@@ -132,6 +132,18 @@ CREATE POLICY "CMS update lead"
 REVOKE INSERT, UPDATE, DELETE ON public.lead_ban_ve FROM anon;
 
 -- ─────────────────────────────────────────────────────────────
+-- PHẦN 3b: DI CHUYỂN role của user CMS hiện có sang app_metadata
+-- (nếu không, tài khoản đang set role ở user_metadata sẽ mất quyền)
+-- ─────────────────────────────────────────────────────────────
+
+UPDATE auth.users
+SET raw_app_meta_data =
+  coalesce(raw_app_meta_data, '{}'::jsonb)
+  || jsonb_build_object('role', raw_user_meta_data->>'role')
+WHERE raw_user_meta_data->>'role' IS NOT NULL
+  AND coalesce(raw_app_meta_data->>'role', '') = '';
+
+-- ─────────────────────────────────────────────────────────────
 -- PHẦN 4: RPC tiêu thụ token tải — ATOMIC (chống race condition)
 -- Chỉ tăng use_count khi còn hạn & còn lượt; trả về trong 1 câu lệnh.
 -- ─────────────────────────────────────────────────────────────
