@@ -14,16 +14,16 @@ export const metadata: Metadata = {
 async function getLibraryData() {
   const supabase = createPublicClient()
 
-  // Đếm bản vẽ theo loại CT (sử dụng view public)
-  const { data: countData } = await supabase
-    .from('ban_ve')
-    .select('loai_ct')
-    .eq('trang_thai', 'da_xuat')
+  // Đếm bản vẽ theo loại CT bằng RPC group-by (không kéo cả bảng — task 4.8)
+  const { data: countRows } = await supabase.rpc('count_ban_ve_by_loai')
 
   const countByLoai: Record<number, number> = {}
-  if (countData) {
-    for (const row of countData) {
-      countByLoai[row.loai_ct] = (countByLoai[row.loai_ct] ?? 0) + 1
+  let tongBanVe = 0
+  if (countRows) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of countRows as any[]) {
+      countByLoai[row.loai_ct] = Number(row.so_luong)
+      tongBanVe += Number(row.so_luong)
     }
   }
 
@@ -38,8 +38,6 @@ async function getLibraryData() {
     .eq('trang_thai', 'da_xuat')
     .order('luot_tai', { ascending: false })
     .limit(8)
-
-  const tongBanVe = countData?.length ?? 0
 
   return { countByLoai, featured: featured ?? [], tongBanVe }
 }

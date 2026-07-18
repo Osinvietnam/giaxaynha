@@ -2,8 +2,10 @@ import { createPublicClient } from '@/lib/supabase/public'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { LOAI_CT, PHONG_CACH, PAGE_SIZE } from '@/lib/constants'
+import { LOAI_CT, PAGE_SIZE } from '@/lib/constants'
 import { DrawingCard } from '@/components/library/DrawingCard'
+import { FilterControls } from '@/components/library/FilterControls'
+import { MobileFilterSheet } from '@/components/library/MobileFilterSheet'
 
 // Map danh_muc slug → loai_ct number
 const SLUG_TO_LOAI: Record<string, number> = Object.fromEntries(
@@ -16,6 +18,8 @@ interface PageProps {
     phong_cach?: string
     so_tang?: string
     goi_tai?: string
+    dt?: string
+    tinh_id?: string
     sort?: string
     page?: string
   }
@@ -53,6 +57,12 @@ async function fetchDrawings(params: PageProps['searchParams'] & { loaiCt: numbe
   if (params.phong_cach) query = query.eq('phong_cach_1', parseInt(params.phong_cach, 10))
   if (params.so_tang)    query = query.eq('so_tang', parseInt(params.so_tang, 10))
   if (params.goi_tai)    query = query.eq('goi_tai', params.goi_tai)
+  if (params.tinh_id)    query = query.eq('tinh_id', parseInt(params.tinh_id, 10))
+  if (params.dt) {
+    const [min, max] = params.dt.split('-')
+    if (min) query = query.gte('dien_tich_san', parseFloat(min))
+    if (max) query = query.lte('dien_tich_san', parseFloat(max))
+  }
 
   // Sort
   switch (params.sort) {
@@ -112,99 +122,22 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex gap-6">
-          {/* ── Sidebar ─────────────────────────────────────── */}
+          {/* ── Sidebar (desktop) ───────────────────────────── */}
           <aside className="w-56 shrink-0 hidden md:block">
             <div className="sticky top-20">
-              {/* Phong cách */}
-              <div className="mb-6">
-                <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider mb-3">
-                  Phong cách
-                </h3>
-                <div className="space-y-1">
-                  <Link
-                    href={buildUrl({ phong_cach: undefined, page: '1' })}
-                    className={`block text-sm px-2 py-1.5 rounded transition-colors
-                      ${!searchParams.phong_cach
-                        ? 'text-blue-600 bg-blue-50 font-medium'
-                        : 'text-zinc-600 hover:bg-zinc-100'}`}
-                  >
-                    Tất cả phong cách
-                  </Link>
-                  {Object.entries(PHONG_CACH).map(([k, v]) => (
-                    <Link
-                      key={k}
-                      href={buildUrl({ phong_cach: k, page: '1' })}
-                      className={`block text-sm px-2 py-1.5 rounded transition-colors
-                        ${searchParams.phong_cach === k
-                          ? 'text-blue-600 bg-blue-50 font-medium'
-                          : 'text-zinc-600 hover:bg-zinc-100'}`}
-                    >
-                      {v.ten}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Số tầng */}
-              <div className="mb-6">
-                <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider mb-3">
-                  Số tầng
-                </h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {['', '1', '2', '3', '4', '5'].map(t => (
-                    <Link
-                      key={t}
-                      href={buildUrl({ so_tang: t || undefined, page: '1' })}
-                      className={`px-2.5 py-1 text-xs rounded border transition-colors
-                        ${(searchParams.so_tang ?? '') === t
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-white text-zinc-600 border-zinc-300 hover:border-zinc-400'}`}
-                    >
-                      {t === '' ? 'Tất cả' : t === '5' ? '5+' : `${t} tầng`}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Gói tải */}
-              <div className="mb-6">
-                <h3 className="text-xs font-bold text-zinc-700 uppercase tracking-wider mb-3">
-                  Gói tải
-                </h3>
-                <div className="space-y-1">
-                  {[
-                    { value: '',      label: 'Tất cả gói' },
-                    { value: 'free',  label: 'FREE — Miễn phí' },
-                    { value: 'basic', label: 'CƠ BẢN — Đầy đủ' },
-                  ].map(opt => (
-                    <Link
-                      key={opt.value}
-                      href={buildUrl({ goi_tai: opt.value || undefined, page: '1' })}
-                      className={`block text-sm px-2 py-1.5 rounded transition-colors
-                        ${(searchParams.goi_tai ?? '') === opt.value
-                          ? 'text-blue-600 bg-blue-50 font-medium'
-                          : 'text-zinc-600 hover:bg-zinc-100'}`}
-                    >
-                      {opt.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              {/* Xóa filter */}
-              {(searchParams.phong_cach || searchParams.so_tang || searchParams.goi_tai) && (
-                <Link
-                  href={`/thu-vien-ban-ve/${params.slug}`}
-                  className="block text-xs text-red-600 hover:underline mt-2"
-                >
-                  × Xóa tất cả bộ lọc
-                </Link>
-              )}
+              <FilterControls slug={params.slug} searchParams={searchParams} />
             </div>
           </aside>
 
           {/* ── Main content ─────────────────────────────────── */}
           <div className="flex-1 min-w-0">
+            {/* Nút lọc mobile */}
+            <div className="mb-4">
+              <MobileFilterSheet>
+                <FilterControls slug={params.slug} searchParams={searchParams} />
+              </MobileFilterSheet>
+            </div>
+
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-5">
               <p className="text-sm text-zinc-500">

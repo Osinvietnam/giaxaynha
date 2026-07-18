@@ -82,16 +82,25 @@ export default async function CMSBanVeListPage({
           <h1 className="text-xl font-semibold text-zinc-800">Bản vẽ</h1>
           <p className="text-sm text-zinc-500 mt-0.5">{total} bản vẽ</p>
         </div>
-        <Link
-          href="/cms/ban-ve/them-moi"
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500
-                     text-white text-sm font-medium px-4 py-2 rounded transition-colors"
-        >
-          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-          </svg>
-          Thêm mới
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/cms/ban-ve/import"
+            className="inline-flex items-center gap-2 bg-white border border-zinc-300 hover:bg-zinc-50
+                       text-zinc-700 text-sm font-medium px-4 py-2 rounded transition-colors"
+          >
+            ⬆ Import Excel
+          </Link>
+          <Link
+            href="/cms/ban-ve/them-moi"
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500
+                       text-white text-sm font-medium px-4 py-2 rounded transition-colors"
+          >
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+            </svg>
+            Thêm mới
+          </Link>
+        </div>
       </div>
 
       {/* KPI strip */}

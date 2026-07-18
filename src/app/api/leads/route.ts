@@ -163,8 +163,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitLeadRes
         so_dien_thoai:   phone,
         tinh_id:         tinh_id ?? null,
         nhu_cau:         nhu_cau ?? null,
-        drive_url:       null,          // không lưu URL thật ở đây nữa
-        url_expires_at:  expiresAt.toISOString(),
         trang_thai_gd:   'cho_goi',
       })
       .select('id')

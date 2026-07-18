@@ -72,8 +72,7 @@ export interface LeadBanVe {
   nhu_cau: NhuCauLead | null
   ghi_chu: string | null
   trang_thai_gd: TrangThaiGoiDien
-  drive_url: string | null
-  url_expires_at: string | null
+  ghi_chu_crm: string | null
   created_at: string
   // Joined
   ban_ve?: Pick<BanVe, 'id' | 'tieu_de' | 'ma_gxn' | 'anh_bia'>
