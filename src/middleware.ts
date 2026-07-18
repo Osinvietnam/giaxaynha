@@ -2,11 +2,21 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Guard: nếu thiếu env vars thì cho qua — tránh redirect loop khi deploy
+  // Fail-closed (task 0.9): thiếu env → CHẶN /cms thay vì cho qua.
+  // Trang /cms/login vẫn cho vào để hiển thị thông báo lỗi cấu hình.
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
+    if (
+      request.nextUrl.pathname.startsWith('/cms') &&
+      !request.nextUrl.pathname.startsWith('/cms/login')
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/cms/login'
+      url.searchParams.set('error', 'config_missing')
+      return NextResponse.redirect(url)
+    }
     return NextResponse.next({ request })
   }
 

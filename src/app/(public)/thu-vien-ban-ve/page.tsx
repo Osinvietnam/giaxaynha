@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { LOAI_CT, PHONG_CACH } from '@/lib/constants'
+import { boDauTiengViet } from '@/lib/site'
 import { DrawingCard } from '@/components/library/DrawingCard'
 import { SearchBar } from '@/components/library/SearchBar'
 
@@ -43,7 +44,102 @@ async function getLibraryData() {
   return { countByLoai, featured: featured ?? [], tongBanVe }
 }
 
-export default async function ThuVienBanVePage() {
+// ── Tìm kiếm / lọc theo phong cách (task 1.1, 1.3) ────────────
+async function getSearchResults(q: string, phongCach: string) {
+  const supabase = await createClient()
+
+  let query = supabase
+    .from('ban_ve')
+    .select(`
+      id, ma_gxn, tieu_de, loai_ct, phong_cach_1, goi_tai,
+      anh_bia, luot_tai,
+      danh_muc:danh_muc_ban_ve(slug)
+    `, { count: 'exact' })
+    .eq('trang_thai', 'da_xuat')
+
+  if (phongCach) query = query.eq('phong_cach_1', parseInt(phongCach, 10))
+  if (q)         query = query.ilike('search_text', `%${boDauTiengViet(q)}%`)
+
+  const { data, count } = await query
+    .order('luot_tai', { ascending: false })
+    .limit(48)
+
+  return { data: data ?? [], total: count ?? 0 }
+}
+
+function SearchResultsView({
+  q, phongCach, data, total,
+}: {
+  q: string; phongCach: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any[]; total: number
+}) {
+  const pcName = phongCach ? PHONG_CACH[parseInt(phongCach, 10)]?.ten : null
+  const heading = q
+    ? `Kết quả cho “${q}”`
+    : pcName ? `Phong cách ${pcName}` : 'Kết quả tìm kiếm'
+
+  return (
+    <div className="min-h-screen bg-white">
+      <section className="bg-zinc-900 pt-10 pb-10 px-4">
+        <div className="max-w-3xl mx-auto">
+          <SearchBar initialQ={q} />
+        </div>
+      </section>
+
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex items-baseline justify-between mb-5">
+          <h1 className="text-lg font-semibold text-zinc-800">{heading}</h1>
+          <span className="text-sm text-zinc-500">{total} bản vẽ</span>
+        </div>
+
+        {data.length === 0 ? (
+          <div className="text-center py-20 border border-dashed border-zinc-300 rounded-xl">
+            <div className="text-4xl mb-3">🔍</div>
+            <p className="text-zinc-600 font-medium mb-1">Không tìm thấy bản vẽ phù hợp</p>
+            <p className="text-sm text-zinc-400 mb-4">
+              Thử từ khoá khác, hoặc duyệt theo loại công trình.
+            </p>
+            <Link href="/thu-vien-ban-ve" className="text-sm text-blue-600 hover:underline">
+              ← Về thư viện
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {data.map((bv) => (
+              <DrawingCard
+                key={bv.id}
+                maGXN={bv.ma_gxn}
+                tieuDe={bv.tieu_de}
+                loaiCt={bv.loai_ct}
+                phongCach1={bv.phong_cach_1}
+                goiTai={bv.goi_tai}
+                anhBia={bv.anh_bia}
+                luotTai={bv.luot_tai}
+                danhMucSlug={(bv.danh_muc as { slug: string } | null)?.slug ?? 'ban-ve'}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default async function ThuVienBanVePage({
+  searchParams,
+}: {
+  searchParams: { q?: string; phong_cach?: string }
+}) {
+  const q  = searchParams.q?.trim() ?? ''
+  const pc = searchParams.phong_cach ?? ''
+
+  // Nếu có từ khoá / lọc phong cách → hiển thị trang kết quả
+  if (q || pc) {
+    const { data, total } = await getSearchResults(q, pc)
+    return <SearchResultsView q={q} phongCach={pc} data={data} total={total} />
+  }
+
   const { countByLoai, featured, tongBanVe } = await getLibraryData()
 
   return (

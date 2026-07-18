@@ -16,21 +16,26 @@ import type { SubmitLeadResponse } from '@/lib/types'
 const DOWNLOAD_LIMIT_PER_DAY = parseInt(process.env.DOWNLOAD_LIMIT_PER_DAY ?? '5')
 const TOKEN_MAX_USES          = parseInt(process.env.TOKEN_MAX_USES          ?? '3')
 const TOKEN_EXPIRE_HOURS      = parseInt(process.env.TOKEN_EXPIRE_HOURS      ?? '24')
-// HASH_SALT phải set trong Vercel env vars — không để mặc định trên production
-const HASH_SALT = process.env.HASH_SALT ?? 'gxn_dev_salt_change_in_prod'
+// HASH_SALT phải set trong Vercel env vars — fail-hard ở production (kiểm trong handler)
+const HASH_SALT = process.env.HASH_SALT
+const SALT = HASH_SALT ?? 'gxn_dev_salt_only_local'
 
 // ── Helpers ───────────────────────────────────────────────────
 
 /** Hash SĐT → không lưu số thật vào DB */
 function hashPhone(phone: string): string {
-  return createHash('sha256')
-    .update(HASH_SALT + phone.replace(/\s/g, ''))
-    .digest('hex')
+  return createHash('sha256').update(SALT + phone).digest('hex')
 }
 
-/** Chuẩn hoá SĐT Việt Nam */
+/**
+ * Chuẩn hoá SĐT Việt Nam về DẠNG DUY NHẤT (0xxxxxxxxx) để rate-limit
+ * không bị lách bằng +84 / 84 / khoảng trắng.
+ */
 function cleanPhone(phone: string): string {
-  return phone.replace(/[\s\-()]/g, '')
+  let p = phone.replace(/[\s\-().]/g, '')
+  if (p.startsWith('+84'))                        p = '0' + p.slice(3)
+  else if (p.startsWith('84') && p.length >= 11)  p = '0' + p.slice(2)
+  return p
 }
 
 // ── Zod Schema ────────────────────────────────────────────────
@@ -48,6 +53,15 @@ const leadSchema = z.object({
 
 export async function POST(req: NextRequest): Promise<NextResponse<SubmitLeadResponse>> {
   try {
+    // Fail-hard: không cho chạy production nếu chưa cấu hình HASH_SALT
+    if (!HASH_SALT && process.env.NODE_ENV === 'production') {
+      console.error('[leads] HASH_SALT chưa được cấu hình trên production')
+      return NextResponse.json(
+        { success: false, error: 'Hệ thống chưa cấu hình đầy đủ' },
+        { status: 500 }
+      )
+    }
+
     const body   = await req.json()
     const parsed = leadSchema.safeParse(body)
 

@@ -145,16 +145,19 @@ export default function ThemMoiBanVePage() {
     })
 
   // ── Upload helper ──
+  // Trả cả object key (path) và publicUrl.
+  // File bản vẽ (bucket private) → LƯU key để /api/download ký link.
+  // Ảnh bìa (bucket public) → lưu publicUrl.
   async function uploadToStorage(
     supabase: ReturnType<typeof createClient>,
     bucket: string,
     path: string,
     file: File,
-  ): Promise<string> {
+  ): Promise<{ path: string; publicUrl: string }> {
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
     if (error) throw new Error(`Upload thất bại: ${error.message}`)
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path)
-    return publicUrl
+    return { path, publicUrl }
   }
 
   // ── Submit ──
@@ -184,34 +187,37 @@ export default function ThemMoiBanVePage() {
       let cadUrl:   string | null = null
       let coverUrl: string | null = null
 
-      // PDF — upload file hoặc dùng URL OneDrive
+      // PDF — upload file (lưu KEY, bucket private) hoặc dùng URL OneDrive
       if (pdfMode === 'url' && pdfUrlInput.trim()) {
         pdfUrl = pdfUrlInput.trim()
       } else if (pdfMode === 'upload' && pdfFile) {
         setUploadStep('Đang tải file PDF...')
-        pdfUrl = await uploadToStorage(
+        const up = await uploadToStorage(
           supabase, 'ban-ve-files', `${maGXN}/ban-ve.pdf`, pdfFile,
         )
+        pdfUrl = up.path        // lưu key → /api/download ký link nội bộ
       }
 
-      // CAD — upload file hoặc dùng URL OneDrive
+      // CAD — upload file (lưu KEY) hoặc dùng URL OneDrive
       if (cadMode === 'url' && cadUrlInput.trim()) {
         cadUrl = cadUrlInput.trim()
       } else if (cadMode === 'upload' && cadFile) {
         setUploadStep('Đang tải file CAD...')
         const ext = cadFile.name.split('.').pop() ?? 'dwg'
-        cadUrl = await uploadToStorage(
+        const up = await uploadToStorage(
           supabase, 'ban-ve-files', `${maGXN}/ban-ve.${ext}`, cadFile,
         )
+        cadUrl = up.path
       }
 
-      // Upload ảnh bìa
+      // Upload ảnh bìa (bucket public → lưu publicUrl)
       if (coverImage) {
         setUploadStep('Đang tải ảnh bìa...')
         const ext = coverImage.name.split('.').pop() ?? 'jpg'
-        coverUrl = await uploadToStorage(
+        const up = await uploadToStorage(
           supabase, 'ban-ve-images', `${maGXN}/cover.${ext}`, coverImage,
         )
+        coverUrl = up.publicUrl
       }
 
       // Tìm danh_muc_id từ loai_ct slug

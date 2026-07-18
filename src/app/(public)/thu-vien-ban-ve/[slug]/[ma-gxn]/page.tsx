@@ -5,6 +5,8 @@ import type { Metadata } from 'next'
 import { LOAI_CT, PHONG_CACH, TINH } from '@/lib/constants'
 import { DownloadGate } from '@/components/library/DownloadGate'
 import { DrawingCard } from '@/components/library/DrawingCard'
+import { Gallery } from '@/components/library/Gallery'
+import { DOWNLOAD } from '@/lib/site'
 
 interface PageProps {
   params: { slug: string; 'ma-gxn': string }
@@ -41,7 +43,7 @@ async function getDrawing(maGXN: string) {
       chieu_dai, chieu_rong, so_tang, dien_tich_san, so_phong_ngu,
       tinh_id, mo_ta, the_tag,
       anh_bia, anh_phu,
-      file_pdf_url, goi_tai,
+      goi_tai,
       luot_xem, luot_tai,
       trang_thai,
       danh_muc:danh_muc_ban_ve(ten, slug)
@@ -123,38 +125,7 @@ export default async function DrawingDetailPage({ params }: PageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ── Gallery (2/3) ──────────────────────────────── */}
           <div className="lg:col-span-2">
-            {/* Main image */}
-            <div className="aspect-[4/3] bg-zinc-100 rounded-xl overflow-hidden mb-3">
-              {allImages[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={allImages[0]}
-                  alt={bv.tieu_de}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                  <span className="text-6xl opacity-30">{loai?.emoji ?? '🏠'}</span>
-                  <span className="text-sm text-zinc-400">Chưa có ảnh phối cảnh</span>
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnails */}
-            {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {allImages.slice(0, 6).map((img, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={img}
-                    alt={`${bv.tieu_de} - ${i + 1}`}
-                    className="w-20 h-14 object-cover rounded-lg border-2 border-transparent
-                               hover:border-blue-500 cursor-pointer transition-all shrink-0"
-                  />
-                ))}
-              </div>
-            )}
+            <Gallery images={allImages} alt={bv.tieu_de} fallbackEmoji={loai?.emoji ?? '🏠'} />
 
             {/* Mô tả */}
             {bv.mo_ta && (
@@ -262,7 +233,7 @@ export default async function DrawingDetailPage({ params }: PageProps) {
               />
 
               <p className="text-xs text-zinc-400 text-center mt-3">
-                Link tải có hiệu lực 72 giờ sau khi nhận
+                Link tải có hiệu lực {DOWNLOAD.expireHours} giờ sau khi nhận
               </p>
             </div>
           </div>

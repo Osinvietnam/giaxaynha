@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { NHU_CAU_LABELS, TINH } from '@/lib/constants'
+import { LeadActions } from './LeadActions'
 
 const TRANG_THAI_GD_OPTIONS = [
   { value: '',          label: 'Tất cả' },
@@ -39,7 +40,7 @@ async function getLeads(params: {
     .from('lead_ban_ve')
     .select(`
       id, ho_ten, so_dien_thoai, tinh_id, nhu_cau,
-      trang_thai_gd, created_at, drive_url, url_expires_at,
+      trang_thai_gd, ghi_chu_crm, created_at,
       ban_ve:ban_ve_id(ma_gxn, tieu_de)
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
@@ -121,6 +122,13 @@ export default async function CMSLeadsPage({
     return `/cms/leads?${p.toString()}`
   }
 
+  // URL export CSV — giữ nguyên bộ lọc hiện tại (task 1.13)
+  const exportParams = new URLSearchParams()
+  if (searchParams.trang_thai_gd) exportParams.set('trang_thai_gd', searchParams.trang_thai_gd)
+  if (searchParams.q)             exportParams.set('q', searchParams.q)
+  const exportQs  = exportParams.toString()
+  const exportUrl = `/api/cms/leads/export${exportQs ? `?${exportQs}` : ''}`
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -129,18 +137,19 @@ export default async function CMSLeadsPage({
           <h1 className="text-xl font-semibold text-zinc-800">Leads</h1>
           <p className="text-sm text-zinc-500 mt-0.5">{total} leads</p>
         </div>
-        <button
+        <a
+          href={exportUrl}
           className="inline-flex items-center gap-2 bg-white border border-zinc-200
                      text-zinc-700 text-sm font-medium px-4 py-2 rounded
                      hover:bg-zinc-50 transition-colors"
-          title="Tính năng export sẽ có ở Sprint 3"
+          title="Tải danh sách leads (CSV, mở bằng Excel)"
         >
           <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
             <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
           </svg>
           Xuất Excel
-        </button>
+        </a>
       </div>
 
       {/* KPI strip */}
@@ -247,8 +256,8 @@ export default async function CMSLeadsPage({
                 tinh_id: number | null
                 nhu_cau: string | null
                 trang_thai_gd: string
+                ghi_chu_crm: string | null
                 created_at: string
-                drive_url: string | null
                 // Supabase join returns array shape; handle both
                 ban_ve: { ma_gxn: string; tieu_de: string } | { ma_gxn: string; tieu_de: string }[] | null
               }) => {
@@ -316,14 +325,12 @@ export default async function CMSLeadsPage({
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <a
-                        href={`tel:${lead.so_dien_thoai}`}
-                        className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700
-                                   border border-blue-200 px-2.5 py-1 rounded hover:bg-blue-100
-                                   transition-colors font-medium"
-                      >
-                        📞 Gọi ngay
-                      </a>
+                      <LeadActions
+                        id={lead.id}
+                        sdt={lead.so_dien_thoai}
+                        status={lead.trang_thai_gd}
+                        ghiChu={lead.ghi_chu_crm}
+                      />
                     </td>
                   </tr>
                 )

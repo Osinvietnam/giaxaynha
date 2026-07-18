@@ -10,7 +10,6 @@ export default async function CMSLayout({ children }: { children: React.ReactNod
   // Double-check (middleware đã xử lý nhưng để an toàn)
   if (!user) redirect('/cms/login')
 
-  const role = user.user_metadata?.role as string ?? 'unknown'
   const displayName = user.user_metadata?.full_name ?? user.email ?? ''
   const initial = displayName.charAt(0).toUpperCase()
 
@@ -32,12 +31,7 @@ export default async function CMSLayout({ children }: { children: React.ReactNod
           <a href="/cms"          className="cms-nav-link">Dashboard</a>
           <a href="/cms/ban-ve"   className="cms-nav-link">Bản vẽ</a>
           <a href="/cms/leads"    className="cms-nav-link">Leads</a>
-          {role === 'quan_ly' && (
-            <>
-              <a href="/cms/don-hang" className="cms-nav-link">Đơn hàng</a>
-              <a href="/cms/cai-dat"  className="cms-nav-link">Cài đặt</a>
-            </>
-          )}
+          {/* Đơn hàng / Cài đặt: ẩn cho tới khi trang được tạo (tránh 404) — task 1.13 */}
         </div>
 
         {/* User info */}

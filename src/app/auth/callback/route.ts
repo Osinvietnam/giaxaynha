@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/cms'
+
+  // Chống open redirect (task 0.7): chỉ nhận path nội bộ, không nhận //host hay @host
+  const rawNext = searchParams.get('next') ?? '/cms'
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/cms'
 
   if (code) {
     const supabase = await createClient()
