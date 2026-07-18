@@ -8,8 +8,10 @@ import { DownloadGate } from '@/components/library/DownloadGate'
 import { DrawingCard } from '@/components/library/DrawingCard'
 import { Gallery } from '@/components/library/Gallery'
 import { ViewBeacon } from '@/components/library/ViewBeacon'
+import { KhaiToanWidget } from '@/components/library/KhaiToanWidget'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { DOWNLOAD, BASE_URL, SITE } from '@/lib/site'
+import type { LoaiMai } from '@/lib/estimate'
 
 interface PageProps {
   params: { slug: string; 'ban-ve': string }
@@ -45,6 +47,7 @@ const DETAIL_SELECT = `
   tinh_id, mo_ta, the_tag,
   anh_bia, anh_phu,
   goi_tai, seo_title, seo_description,
+  dt_1_san, loai_mai, co_tang_ham,
   luot_xem, luot_tai,
   trang_thai,
   danh_muc:danh_muc_ban_ve(ten, slug)
@@ -292,6 +295,23 @@ export default async function DrawingDetailPage({ params }: PageProps) {
                 <span>👁 {bv.luot_xem.toLocaleString('vi-VN')} lượt xem</span>
                 <span>📥 {bv.luot_tai.toLocaleString('vi-VN')} lượt tải</span>
               </div>
+
+              {/* Máy tính khái toán (task 5.4) */}
+              <KhaiToanWidget
+                banVeId={bv.id}
+                tieuDe={bv.tieu_de}
+                maGXN={bv.ma_gxn}
+                goiTai={bv.goi_tai as 'free' | 'basic'}
+                dt1San={bv.dt_1_san
+                  ?? (bv.dien_tich_san && bv.so_tang
+                        ? Math.round(bv.dien_tich_san / bv.so_tang)
+                        : bv.dien_tich_san ?? 80)}
+                soTang={bv.so_tang ?? 2}
+                tinhId={bv.tinh_id}
+                loaiMai={(['ton', 'bang', 'thai'].includes(bv.loai_mai)
+                  ? bv.loai_mai : undefined) as LoaiMai | undefined}
+                coHam={bv.co_tang_ham ?? false}
+              />
 
               {/* Download button */}
               <DownloadGate

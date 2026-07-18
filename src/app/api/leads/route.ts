@@ -73,6 +73,11 @@ const leadSchema = z.object({
                   .regex(/^[0-9+\s\-()]+$/, 'SĐT không hợp lệ'),
   tinh_id:       z.number().int().min(1).max(63).optional(),
   nhu_cau:       z.enum(['tham_khao','muon_thicong','can_tuvan','khac']).optional(),
+  // Tham số khái toán (từ widget dự toán)
+  khai_toan_min:  z.number().int().nonnegative().optional(),
+  khai_toan_max:  z.number().int().nonnegative().optional(),
+  muc_hoan_thien: z.enum(['tho','co_ban','kha','cao_cap']).optional(),
+  dt_lo_dat:      z.number().positive().max(100000).optional(),
 })
 
 // ── Handler ───────────────────────────────────────────────────
@@ -107,7 +112,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitLeadRes
       )
     }
 
-    const { ban_ve_id, ho_ten, so_dien_thoai, tinh_id, nhu_cau } = parsed.data
+    const {
+      ban_ve_id, ho_ten, so_dien_thoai, tinh_id, nhu_cau,
+      khai_toan_min, khai_toan_max, muc_hoan_thien, dt_lo_dat,
+    } = parsed.data
     const phone      = cleanPhone(so_dien_thoai)
     const phoneHash  = hashPhone(phone)
     const supabase   = createServiceClient()
@@ -164,6 +172,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<SubmitLeadRes
         tinh_id:         tinh_id ?? null,
         nhu_cau:         nhu_cau ?? null,
         trang_thai_gd:   'cho_goi',
+        khai_toan_min:   khai_toan_min ?? null,
+        khai_toan_max:   khai_toan_max ?? null,
+        muc_hoan_thien:  muc_hoan_thien ?? null,
+        dt_lo_dat:       dt_lo_dat ?? null,
       })
       .select('id')
       .single()

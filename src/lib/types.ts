@@ -80,12 +80,24 @@ export interface LeadBanVe {
 
 // ── API Request/Response shapes ───────────────────────────────
 
+export interface EstimatePayload {
+  khai_toan_min: number
+  khai_toan_max: number
+  muc_hoan_thien: string
+  dt_lo_dat: number
+}
+
 export interface SubmitLeadRequest {
   ban_ve_id: string
   ho_ten?: string
   so_dien_thoai: string
   tinh_id?: number
   nhu_cau?: NhuCauLead
+  // Tham số khái toán (khi gửi từ widget dự toán)
+  khai_toan_min?: number
+  khai_toan_max?: number
+  muc_hoan_thien?: string
+  dt_lo_dat?: number
 }
 
 export interface SubmitLeadResponse {

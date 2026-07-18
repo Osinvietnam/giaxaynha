@@ -3,19 +3,21 @@
 import { useState, useRef, useEffect } from 'react'
 import { TINH, NHU_CAU_LABELS } from '@/lib/constants'
 import { SITE, DOWNLOAD, GOI_INFO, chuanHoaSDT } from '@/lib/site'
-import type { NhuCauLead, SubmitLeadResponse } from '@/lib/types'
+import { formatVND } from '@/lib/estimate'
+import type { NhuCauLead, SubmitLeadResponse, EstimatePayload } from '@/lib/types'
 
 interface DownloadModalProps {
   banVeId: string
   tieuDe: string
   maGXN: string
   goiTai: 'free' | 'basic'
+  estimate?: EstimatePayload
   onClose: () => void
 }
 
 type Step = 'form' | 'loading' | 'success' | 'error'
 
-export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: DownloadModalProps) {
+export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, estimate, onClose }: DownloadModalProps) {
   const [step, setStep]     = useState<Step>('form')
   const [sdt, setSdt]       = useState('')
   const [hoTen, setHoTen]   = useState('')
@@ -65,6 +67,7 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
           ho_ten:        hoTen.trim() || undefined,
           tinh_id:       tinhId || undefined,
           nhu_cau:       nhuCau || undefined,
+          ...(estimate ?? {}),
         }),
       })
       const data: SubmitLeadResponse = await res.json()
@@ -92,7 +95,9 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
 
   const headerTitle = step === 'success'
     ? 'Link tải đã sẵn sàng'
-    : goiTai === 'free' ? 'Nhận bản vẽ miễn phí' : 'Nhận bản vẽ — gói Cơ bản'
+    : estimate
+      ? 'Nhận dự toán chi tiết'
+      : goiTai === 'free' ? 'Nhận bản vẽ miễn phí' : 'Nhận bản vẽ — gói Cơ bản'
 
   return (
     <div
@@ -135,6 +140,14 @@ export function DownloadModal({ banVeId, tieuDe, maGXN, goiTai, onClose }: Downl
                   <span className="text-xs font-semibold text-zinc-700">{goi.price}</span>
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">{goi.desc}</p>
+                {estimate && (
+                  <div className="mt-2 pt-2 border-t border-zinc-200">
+                    <p className="text-xs text-zinc-500">Khái toán bạn vừa tính:</p>
+                    <p className="text-sm font-semibold text-blue-700">
+                      {formatVND(estimate.khai_toan_min)} – {formatVND(estimate.khai_toan_max)}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
